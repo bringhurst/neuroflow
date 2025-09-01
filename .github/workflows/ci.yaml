@@ -1,0 +1,113 @@
+name: Neuroflow CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch: {}
+
+# Cancel in-progress runs of the same ref
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# Least privilege
+permissions:
+  contents: read
+
+# Use bash across all OSes
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  lint:
+    name: Lint (ruff) + Types (ty)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Ruff (install + check with PR annotations)
+        id: ruff
+        uses: astral-sh/ruff-action@v3
+        with:
+          version: latest
+          args: "check --output-format=github"
+          src: "."
+
+      - name: Show installed ruff version
+        run: echo "ruff version: ${{ steps.ruff.outputs['ruff-version'] }}"
+
+      - name: Install uv (for ty)
+        uses: astral-sh/setup-uv@v6
+        with:
+          version: latest
+          enable-cache: true
+
+      - name: Type check (ty via uvx)
+        # ty is preview; keep it non-blocking but visible
+        continue-on-error: true
+        env:
+          UV_CACHE_DIR: ${{ runner.temp }}/setup-uv-cache
+        run: |
+          uvx ty --version || true
+          uvx ty check .
+
+  test:
+    name: Test (pytest + coverage)
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ ubuntu-latest, macos-latest, windows-latest ]
+        python-version: [ "3.11", "3.12" ]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        id: setup-uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          version: latest
+          python-version: ${{ matrix.python-version }}
+          enable-cache: true
+          cache-suffix: "${{ runner.os }}-py${{ matrix.python-version }}"
+
+      - name: Show installed uv
+        run: echo "Installed uv: ${{ steps.setup-uv.outputs['uv-version'] }}"
+
+      - name: Ensure Python runtime
+        run: uv python install ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        env:
+          UV_CACHE_DIR: ${{ runner.temp }}/setup-uv-cache
+        run: uv sync
+
+      - name: Run tests with coverage
+        env:
+          UV_CACHE_DIR: ${{ runner.temp }}/setup-uv-cache
+        run: |
+          uv run --frozen pytest \
+            --junitxml=junit.xml \
+            --cov=neuroflow \
+            --cov-report=xml:coverage.xml \
+            --cov-report=html:coverage_html
+
+      - name: Upload test artifacts (JUnit + coverage)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-artifacts-${{ matrix.os }}-py${{ matrix.python-version }}
+          path: |
+            junit.xml
+            coverage.xml
+            coverage_html
+          if-no-files-found: ignore
+          retention-days: 14
