@@ -38,9 +38,6 @@ jobs:
           args: "check --output-format=github"
           src: "."
 
-      - name: Show installed ruff version
-        run: echo "ruff version: ${{ steps.ruff.outputs['ruff-version'] }}"
-
       - name: Install uv (for ty)
         uses: astral-sh/setup-uv@v6
         with:
@@ -64,7 +61,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ ubuntu-latest, macos-latest, windows-latest ]
-        python-version: [ "3.11", "3.12" ]
+        python-version: [ "3.13" ]
 
     steps:
       - name: Checkout
@@ -78,9 +75,6 @@ jobs:
           python-version: ${{ matrix.python-version }}
           enable-cache: true
           cache-suffix: "${{ runner.os }}-py${{ matrix.python-version }}"
-
-      - name: Show installed uv
-        run: echo "Installed uv: ${{ steps.setup-uv.outputs['uv-version'] }}"
 
       - name: Ensure Python runtime
         run: uv python install ${{ matrix.python-version }}

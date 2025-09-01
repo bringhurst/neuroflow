@@ -1,9 +1,27 @@
 [project]
 name = "neuroflow"
 version = "0.1.0"
-description = "Add your description here"
+description = "Composable, event-driven spiking neural circuits based on dataflow style pipelines."
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
+    "pytest>=8.4.1",
     "ruff>=0.12.11",
 ]
+authors = [{ name = "Jon Bringhurst", email = "jon@bringhurst.org"}]
+license = {text = "GNU Affero General Public License v3"}
+classifiers = [
+  "Programming Language :: Python",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3.13",
+  "Intended Audience :: Science/Research",
+  "License :: OSI Approved :: GNU Affero General Public License v3",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+[build-system]
+requires = ["uv_build >= 0.7.19, <0.9.0"]
+build-backend = "uv_build"
+
+[project.scripts]
+neuroflow = "neuroflow.main:main"
